@@ -9,10 +9,10 @@ January 2018
 # Libraries
 from abc import ABC
 import numpy as np
-from adageo.base_classes import ObservedSpaceSampler
+from adageo.base_classes import AdaGeoAlgorithm, ObservedSpaceSampler
 
 
-class AdaGeoSampler(ABC):
+class AdaGeoSampler(AdaGeoAlgorithm, ABC):
 
     def __init__(self, objective_function,
                  obs_sampler: ObservedSpaceSampler):
@@ -21,27 +21,12 @@ class AdaGeoSampler(ABC):
         :param objective_function: function from which we want to sample from;
         :param obs_sampler: sampler that will act on the observed space.
         """
-        self.objective = objective_function
+        super(AdaGeoSampler, self).__init__(objective_function)
         self.obs_sampler = obs_sampler
-        self.observed_samples = None
-        self.dim_observed = None
-        self.theta = None
-        self.omega = None
-        return
-
-    def load_observed_samples(self, filename: str):
-        """
-        Load observed space samples, previously produced with a generic sampler
-        acting on the observed space.
-        :param filename: string containing the location of the samples.
-        """
-        self.observed_samples = np.load(filename)
-        self.dim_observed = self.observed_samples.shape[1]
-        self.theta = np.copy(self.observed_samples[-1, :])
         return
 
     def sample_observed_space(self, n_samples: int = 100, n_burn: int = 10000,
-                              thin_factor: int = 100):
+                              thin_factor: int = 100) -> None:
         """
         Uses the sampler in self.obs_sampler to sample directly from the
         observed space, collecting in this way the samples the latent space is
