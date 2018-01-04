@@ -7,7 +7,7 @@ January 2018
 
 
 # Libraries
-from abc import ABC
+from abc import ABC, abstractmethod
 import numpy as np
 from adageo.base_classes import AdaGeoAlgorithm, ObservedSpaceSampler
 
@@ -21,7 +21,7 @@ class AdaGeoSampler(AdaGeoAlgorithm, ABC):
         :param objective_function: function from which we want to sample from;
         :param obs_sampler: sampler that will act on the observed space.
         """
-        super(AdaGeoSampler, self).__init__(objective_function)
+        AdaGeoAlgorithm.__init__(self, objective_function)
         self.obs_sampler = obs_sampler
         return
 
@@ -43,3 +43,24 @@ class AdaGeoSampler(AdaGeoAlgorithm, ABC):
             self.observed_samples, [n_samples, self.obs_sampler.dim_observed])
         self.dim_observed = self.obs_sampler.dim_observed
         return
+
+    @abstractmethod
+    def perform_step(self):
+        """
+        Performs a single update step of the Markov Chain used for sampling
+        """
+        pass
+
+    @abstractmethod
+    def run_burn_in(self):
+        """
+        Runs the necessary burn-in iterations before sampling
+        """
+        pass
+
+    @abstractmethod
+    def sample(self):
+        """
+        Samples using the AdaGeo-method
+        """
+        pass

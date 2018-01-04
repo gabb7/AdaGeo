@@ -31,6 +31,20 @@ class ObservedSpaceSampler(ABC):
         pass
 
 
+class ObservedSpaceOptimizer(ABC):
+
+    def __init__(self, objective_function):
+        self.objective = objective_function
+
+    @abstractmethod
+    def optimize(self):
+        """
+        Abstract method that allows you to optimize the objective function.
+        It needs to be implemented.
+        """
+        pass
+
+
 class AdaGeoAlgorithm(object):
 
     def __init__(self, objective_function):
