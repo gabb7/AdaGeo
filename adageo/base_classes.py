@@ -45,6 +45,42 @@ class ObservedSpaceOptimizer(ABC):
         pass
 
 
+class Samplable(ABC):
+
+    @abstractmethod
+    def p(self, x: np.array) -> float:
+        """
+        Returns the value of the probability distribution we want to sample
+        from computed at x (can be unnormalized)
+        :param x: numpy array containing the desired coordinates
+        :return: probability at x
+        """
+        pass
+
+
+class Optimizable(ABC):
+
+    @abstractmethod
+    def f(self, x: np.array) -> float:
+        """
+        Returns the value of the objective function we want to optimize
+        computed at x
+        :param x: numpy array containing the desired coordinates
+        :return: value of the objective function at x
+        """
+        pass
+
+    @abstractmethod
+    def get_gradients(self, x: np.array) -> np.array:
+        """
+        Returns the gradients of the objective function we want to optimize
+        computed at x
+        :param x: numpy array containing the desired coordinates
+        :return: function gradients at x
+        """
+        pass
+
+
 class AdaGeoAlgorithm(object):
 
     def __init__(self, objective_function):
