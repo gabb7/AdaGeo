@@ -242,3 +242,39 @@ class AdaGeoAdaGrad(AdaGeoOptimizer):
             for t in range(self.t_latent):
                 self.perform_step()
         return
+
+
+class AdaGeoNaturalGradient(AdaGeoOptimizer):
+
+    def __init__(self, objective_function: Optimizable,
+                 obs_optimizer: ObservedSpaceOptimizer,
+                 learning_rate: float = 1e-2, rate_decay: float = 1e-3,
+                 t_observed: int = 15, t_latent: int = 15):
+        """
+        Constructor.
+        :param objective_function: function from which we want to optimize;
+        :param obs_optimizer: optimizer that will act on the observed space;
+        :param learning_rate: learning rate in the update rule on the latent
+        space;
+        :param rate_decay: how fast the learning rate decays (needed for SGD);
+        :param t_observed: how many iterations in the observed space;
+        :param t_latent: how many iterations in the latent space.
+        """
+        AdaGeoOptimizer.__init__(self, objective_function, obs_optimizer,
+                                 learning_rate, rate_decay, t_observed,
+                                 t_latent)
+        return
+
+    def perform_step(self) -> None:
+        """
+        Performs a single optimization step using the vanilla (stochastic)
+        gradient descent.
+        """
+        self.n_it = self.n_it + 1
+        self.update_learning_rate()
+        observed_gradient = self.get_observed_gradient(self.theta)
+        natural_gradient = self.compute_natural_latent_gradient(
+            observed_gradient)
+        self.omega = self.omega - self.learning_rate * natural_gradient[0, :]
+        self.theta = self.gplvm_model.predict(self.omega)[0]
+        return

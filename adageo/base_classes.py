@@ -197,5 +197,20 @@ class AdaGeoAlgorithm(object):
         :return: the corresponding gradient in the latent space.
         """
         self.compute_jacobian()
-        gradient_latent = np.dot(self.jacobian, observed_gradient[0, :])
-        return np.reshape(gradient_latent, [1, self.dim_latent])
+        latent_gradient = np.dot(self.jacobian, observed_gradient[0, :])
+        return np.reshape(latent_gradient, [1, self.dim_latent])
+
+    def compute_natural_latent_gradient(
+            self, observed_gradient: np.array) -> np.array:
+        """
+        Compute the natural gradient in the latent space using the metric
+        tensor yielded by the GP-LVM mapping:
+        natural_gradient = inv(metric_tensor) * gradient
+        :param observed_gradient: gradient computed in the observed space;
+        :return: the corresponding natural gradient in the latent space.
+        """
+        self.compute_metric_tensor()
+        latent_gradient = self.compute_latent_gradient(observed_gradient)
+        natural_gradient = np.dot(np.linalg.inv(self.metric_tensor),
+                                  latent_gradient)
+        return natural_gradient
