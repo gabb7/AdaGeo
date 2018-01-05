@@ -39,15 +39,6 @@ class AdaGeoOptimizer(AdaGeoAlgorithm, ABC):
         self.n_it = 0
         return
 
-    def get_observed_gradient(self, theta: np.array) -> np.array:
-        """
-        Returns the value of the gradients in the observed space computed at
-        theta;
-        :param theta: coordinates at which the gradient is computed;
-        :return: numpy array containing the gradients at theta.
-        """
-        return self.objective.get_gradient(theta)
-
     def update_learning_rate(self) -> None:
         """
         Updates the learning rate with decay given as argument to the

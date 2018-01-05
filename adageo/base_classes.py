@@ -24,6 +24,15 @@ class Samplable(ABC):
         """
         pass
 
+    def get_gradient(self, x: np.array) -> np.array:
+        """
+        Returns the gradients of the objective function we want to sample from
+        computed at x (if implementable)
+        :param x: numpy array containing the desired coordinates
+        :return: function gradients at x
+        """
+        pass
+
 
 class Optimizable(ABC):
 
@@ -61,7 +70,7 @@ class ObservedSpaceSampler(ABC):
 
     @abstractmethod
     def sample(self, n_samples: int = 100, n_burn: int = 10000,
-               thin_factor: int = 100):
+               thin_factor: int = 100) -> np.array:
         """
         Abstract method that allows you to sample from the objective function.
         It needs to be implemented
@@ -165,6 +174,15 @@ class AdaGeoAlgorithm(object):
         self.omega = np.reshape(xx[-1, :], [1, self.dim_latent])
         self.theta = self.gplvm_model.predict(self.omega)[0]
         return
+
+    def get_observed_gradient(self, theta: np.array) -> np.array:
+        """
+        Returns the value of the gradients in the observed space computed at
+        theta;
+        :param theta: coordinates at which the gradient is computed;
+        :return: numpy array containing the gradients at theta.
+        """
+        return self.objective.get_gradient(theta)
 
     def compute_jacobian(self) -> None:
         """
