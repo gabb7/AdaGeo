@@ -64,7 +64,7 @@ class AdaGeoOptimizer(AdaGeoAlgorithm, ABC):
         """
         pass
 
-    def optimize(self, dim_latent, n_iterations: int = 10,
+    def optimize(self, dim_latent: int, n_iterations: int = 10,
                  ard: bool = False) -> None:
         """
         Main optimization function.
@@ -160,7 +160,7 @@ class AdaGeoMomentumDescent(AdaGeoOptimizer):
         self.theta = self.gplvm_model.predict(self.omega)[0]
         return
 
-    def optimize(self, dim_latent, n_iterations: int = 10,
+    def optimize(self, dim_latent: int, n_iterations: int = 10,
                  ard: bool = False) -> None:
         """
         Main optimization function.
@@ -222,7 +222,7 @@ class AdaGeoAdaGrad(AdaGeoOptimizer):
         self.theta = self.gplvm_model.predict(self.omega)[0]
         return
 
-    def optimize(self, dim_latent, n_iterations: int = 10,
+    def optimize(self, dim_latent: int, n_iterations: int = 10,
                  ard: bool = False) -> None:
         """
         Main optimization function.
