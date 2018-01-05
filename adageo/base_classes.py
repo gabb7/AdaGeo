@@ -12,39 +12,6 @@ import numpy as np
 import GPy
 
 
-class ObservedSpaceSampler(ABC):
-
-    def __init__(self, objective_function):
-        self.objective = objective_function
-        self.dim_observed = None
-
-    @abstractmethod
-    def sample(self, n_samples: int = 100, n_burn: int = 10000,
-               thin_factor: int = 100):
-        """
-        Abstract method that allows you to sample from the objective function.
-        It needs to be implemented
-        :param n_samples: number of needed observed samples;
-        :param n_burn: number of burn-in iterations;
-        :param thin_factor: sampling thinning factor.
-        """
-        pass
-
-
-class ObservedSpaceOptimizer(ABC):
-
-    def __init__(self, objective_function):
-        self.objective = objective_function
-
-    @abstractmethod
-    def optimize(self):
-        """
-        Abstract method that allows you to optimize the objective function.
-        It needs to be implemented.
-        """
-        pass
-
-
 class Samplable(ABC):
 
     @abstractmethod
@@ -71,7 +38,7 @@ class Optimizable(ABC):
         pass
 
     @abstractmethod
-    def get_gradients(self, x: np.array) -> np.array:
+    def get_gradient(self, x: np.array) -> np.array:
         """
         Returns the gradients of the objective function we want to optimize
         computed at x
@@ -81,9 +48,55 @@ class Optimizable(ABC):
         pass
 
 
-class AdaGeoAlgorithm(object):
+class ObservedSpaceSampler(ABC):
 
     def __init__(self, objective_function):
+        """
+        Constructor.
+        :param objective_function: function which we want to sample from.
+        """
+        self.objective = objective_function
+        self.dim_observed = None
+        return
+
+    @abstractmethod
+    def sample(self, n_samples: int = 100, n_burn: int = 10000,
+               thin_factor: int = 100):
+        """
+        Abstract method that allows you to sample from the objective function.
+        It needs to be implemented
+        :param n_samples: number of needed observed samples;
+        :param n_burn: number of burn-in iterations;
+        :param thin_factor: sampling thinning factor.
+        """
+        pass
+
+
+class ObservedSpaceOptimizer(ABC):
+
+    def __init__(self, objective_function: Optimizable):
+        """
+        Constructor.
+        :param objective_function: function which we want to optimize.
+        """
+        self.objective = objective_function
+        return
+
+    @abstractmethod
+    def optimize(self, n_iterations) -> np.array:
+        """
+        Abstract method that allows you to optimize the objective function.
+        It needs to be implemented. Returns a matrix with dimensions
+        [n_iterations, dim_observed] in which every row shows the value of
+        theta for each optimization step.
+        :param n_iterations: number of optimization iterations
+        """
+        pass
+
+
+class AdaGeoAlgorithm(object):
+
+    def __init__(self, objective_function: Optimizable):
         """
         Constructor.
         :param objective_function: function which we want to sample from or
@@ -111,8 +124,8 @@ class AdaGeoAlgorithm(object):
         self.theta = np.copy(self.observed_samples[-1, :])
         return
 
-    def build_latent_space(self, dim_latent, ard=False,
-                           likelihood_variance=0.1) -> None:
+    def build_latent_space(self, dim_latent: int, ard: bool = False,
+                           likelihood_variance: float = 0.1) -> None:
         """
         Builds the latent representation for the parameters theta acquired so
         far, saved in self.observed_samples.
@@ -143,7 +156,7 @@ class AdaGeoAlgorithm(object):
         self.dim_observed = self.theta.shape[1]
         return
 
-    def initialize_from_last_omega(self) -> None:
+    def initialize_from_last_theta(self) -> None:
         """
         Initialize omega as the point in the latent space that corresponds to
         the last observed sample.
@@ -183,5 +196,6 @@ class AdaGeoAlgorithm(object):
         :param observed_gradient: gradient computed in the observed space;
         :return: the corresponding gradient in the latent space.
         """
+        self.compute_jacobian()
         gradient_latent = np.dot(self.jacobian, observed_gradient[0, :])
         return np.reshape(gradient_latent, [1, self.dim_latent])
