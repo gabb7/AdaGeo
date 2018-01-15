@@ -10,18 +10,107 @@ January 2018
 from abc import ABC, abstractmethod
 import numpy as np
 from scipy.linalg import sqrtm
-from adageo.base_classes import AdaGeoAlgorithm, ObservedSpaceSampler
+from adageo.base_classes import AdaGeoAlgorithm, ObservedSpaceSampler, Samplable
+
+
+class MetropolisHastings(ObservedSpaceSampler):
+
+    def __init__(self, objective_function: Samplable, dim_observed: int,
+                 radius: float):
+        """
+        Constructor.
+        :param objective_function: function which we want to sample from;
+        :param dim_observed: size of the sampled parameter vector;
+        :param radius: radius of the uniform distribution which the proposals
+        are sampled from.
+        """
+        ObservedSpaceSampler.__init__(self, objective_function, dim_observed)
+        self.radius = radius
+        return
+
+    def propose_sample(self) -> np.array:
+        """
+        Returns a proposed update, drawn from a uniform distribution centered on
+        self.theta and with radius self.radius.
+        :return: the proposed update, as a numpy.array.
+        """
+        norm = np.random.normal
+        normal_deviates = norm(size=self.dim_observed)
+        r = np.sqrt((normal_deviates**2).sum(axis=0))
+        update = normal_deviates / r * self.radius
+        return self.theta + update
+
+    def accept_sample(self, proposal: np.array) -> bool:
+        """
+        Decides whether to accept the proposal returned by the previous
+        function, according to the Metropolis - Hastings algorithm.
+        :param proposal: possible new sample;
+        :return: boolean indicating whether to accept or not.
+        """
+        ratio = self.objective.p(proposal) / self.objective.p(self.theta)
+        if np.random.uniform() < ratio:
+            return True
+        return False
+
+    def perform_step(self) -> None:
+        """
+        Performs a single update step of the Markov Chain used for sampling
+        """
+        proposal = self.propose_sample()
+        while not self.accept_sample(proposal):
+            proposal = self.propose_sample()
+        return
+
+
+class SGLD(ObservedSpaceSampler):
+
+    def __init__(self, objective_function: Samplable, dim_observed: int,
+                 epsilon: float = 1e-2, rate_decay: float = 0.0):
+        """
+        Constructor.
+        :param objective_function: function which we want to sample from;
+        :param dim_observed: size of the sampled parameter vector;
+        :param epsilon: step size of the sampler;
+        :param rate_decay: regulates how the step decreases in time. 0.0 if no
+        decrease is needed.
+        """
+        ObservedSpaceSampler.__init__(self, objective_function, dim_observed)
+        self.epsilon = epsilon
+        self.initial_epsilon = epsilon
+        self.rate_decay = rate_decay
+        return
+
+    def update_learning_rate(self) -> None:
+        """
+        Updates the learning rate with decay given as argument to the
+        constructor.
+        """
+        self.epsilon = self.initial_epsilon / (1. + self.rate_decay * self.n_it)
+        return
+
+    def perform_step(self) -> None:
+        """
+        Performs a single update step of the Markov Chain used for sampling
+        """
+        self.update_learning_rate()
+        observed_gradient = self.objective.get_gradient(self.theta)
+        eta = np.random.normal(0.0, np.sqrt(self.epsilon), self.dim_observed)
+        self.theta = self.theta + self.epsilon / 2.0 * observed_gradient + eta
+        return
 
 
 class AdaGeoSampler(AdaGeoAlgorithm, ABC):
 
     def __init__(self, objective_function,
                  obs_sampler: ObservedSpaceSampler,
-                 epsilon: float = 1e-2, rate_decay: float = 0.0,):
+                 epsilon: float = 1e-2, rate_decay: float = 0.0):
         """
         Constructor.
         :param objective_function: function from which we want to sample from;
-        :param obs_sampler: sampler that will act on the observed space.
+        :param obs_sampler: sampler that will act on the observed space;
+        :param epsilon: step size of the sampler;
+        :param rate_decay: regulates how the step decreases in time. 0.0 if no
+        decrease is needed.
         """
         AdaGeoAlgorithm.__init__(self, objective_function)
         self.obs_sampler = obs_sampler
@@ -59,13 +148,13 @@ class AdaGeoSampler(AdaGeoAlgorithm, ABC):
         return
 
     @abstractmethod
-    def perform_step(self):
+    def perform_step(self) -> None:
         """
         Performs a single update step of the Markov Chain used for sampling
         """
         pass
 
-    def run_burn_in(self, n_burn: int):
+    def run_burn_in(self, n_burn: int) -> None:
         """
         Performs the necessary burn-in iterations, before the actual sampling.
         :param n_burn: number of burn-in iterations.
@@ -90,6 +179,8 @@ class AdaGeoSampler(AdaGeoAlgorithm, ABC):
         :param thin_factor_observed: sampling thinning factor (observed space);
         :param ard: indicating whether to use the Automatic Relevance
         Determination (ARD) kernel or not.
+        :return: a matrix with dimensions [n_samples, dim_observed] containing
+        the samples gathered from the observed space.
         """
         self.n_it = 0
         self.dim_latent = dim_latent
@@ -107,18 +198,7 @@ class AdaGeoSampler(AdaGeoAlgorithm, ABC):
 
 class AdaGeoSGLD(AdaGeoSampler):
 
-    def __init__(self, objective_function,
-                 obs_sampler: ObservedSpaceSampler, epsilon=1e-2):
-        """
-        Constructor.
-        :param objective_function: function from which we want to sample from;
-        :param obs_sampler: sampler that will act on the observed space.
-        """
-        AdaGeoSampler.__init__(self, objective_function, obs_sampler)
-        self.epsilon = epsilon
-        return
-
-    def perform_step(self):
+    def perform_step(self) -> None:
         """
         Performs a single step with the AdaGeo stochastic gradient Langevin
         dynamics update rule in the latent space.
@@ -135,7 +215,7 @@ class AdaGeoSGLD(AdaGeoSampler):
 
 class AdaGeoSGRLD(AdaGeoSGLD):
 
-    def perform_step(self):
+    def perform_step(self) -> None:
         """
         Performs a single step with the AdaGeo stochastic gradient Riemannian
         Langevin dynamics update rule in the latent space.

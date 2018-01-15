@@ -59,26 +59,59 @@ class Optimizable(ABC):
 
 class ObservedSpaceSampler(ABC):
 
-    def __init__(self, objective_function):
+    def __init__(self, objective_function: Samplable, dim_observed: int):
         """
         Constructor.
         :param objective_function: function which we want to sample from.
+        :param dim_observed: size of the sampled parameter vector.
         """
         self.objective = objective_function
-        self.dim_observed = None
+        self.dim_observed = dim_observed
+        self.theta = None
+        self.initialize_theta()
+        self.n_it = 0
+        return
+
+    def initialize_theta(self):
+        """
+        Initializes the parameter vector from a N(0,1) distribution
+        """
+        self.theta = np.random.multivariate_normal(np.zeros(self.dim_observed),
+                                                   np.eye(self.dim_observed))
         return
 
     @abstractmethod
+    def perform_step(self):
+        """
+        Performs a single update step of the Markov Chain used for sampling
+        """
+        pass
+
+    def run_burn_in(self, n_burn: int):
+        """
+        Performs the necessary burn-in iterations, before the actual sampling.
+        :param n_burn: number of burn-in iterations.
+        """
+        for n in range(n_burn):
+            self.perform_step()
+        return
+
     def sample(self, n_samples: int = 100, n_burn: int = 10000,
                thin_factor: int = 100) -> np.array:
         """
-        Abstract method that allows you to sample from the objective function.
-        It needs to be implemented
+        Sample from the objective function.
         :param n_samples: number of needed observed samples;
         :param n_burn: number of burn-in iterations;
         :param thin_factor: sampling thinning factor.
         """
-        pass
+        self.n_it = 0
+        self.run_burn_in(n_burn)
+        samples = []
+        for n in range(n_samples):
+            self.n_it = self.n_it + 1
+            self.run_burn_in(thin_factor)
+            samples.append(self.theta)
+        return np.asarray(samples)
 
 
 class ObservedSpaceOptimizer(ABC):
