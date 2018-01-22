@@ -116,24 +116,67 @@ class ObservedSpaceSampler(ABC):
 
 class ObservedSpaceOptimizer(ABC):
 
-    def __init__(self, objective_function: Optimizable):
+    def __init__(self, objective_function: Optimizable, dim_observed: int,
+                 learning_rate: float = 1e-2, rate_decay: float = 0.0):
         """
         Constructor.
         :param objective_function: function which we want to optimize.
         """
         self.objective = objective_function
+        self.dim_observed = dim_observed
+        self.learning_rate = learning_rate
+        self.initial_epsilon = learning_rate
+        self.rate_decay = rate_decay
+        self.theta = None
+        self.initialize_theta()
+        self.n_it = 0
+        return
+
+    def initialize_theta(self):
+        """
+        Initializes the parameter vector from a N(0,1) distribution
+        """
+        self.theta = np.random.multivariate_normal(np.zeros(self.dim_observed),
+                                                   np.eye(self.dim_observed))
+        return
+
+    def update_learning_rate(self) -> None:
+        """
+        Updates the learning rate with decay given as argument to the
+        constructor.
+        """
+        self.learning_rate = self.initial_epsilon / (1. + self.rate_decay *
+                                                     self.n_it)
         return
 
     @abstractmethod
-    def optimize(self, n_iterations) -> np.array:
+    def perform_step(self):
         """
-        Abstract method that allows you to optimize the objective function.
-        It needs to be implemented. Returns a matrix with dimensions
-        [n_iterations, dim_observed] in which every row shows the value of
-        theta for each optimization step.
-        :param n_iterations: number of optimization iterations
+        Performs a single update step of the Markov Chain used for sampling
         """
         pass
+
+    def optimize(self, n_iterations) -> np.array:
+        """
+        Optimizes the objective function while recording the optimization steps.
+        :param n_iterations: number of optimization iterations.
+        :return: a numpy array with dimensions [n_iterations, dim_observed] in
+        which every row shows the value of theta for each optimization step.
+        """
+        samples = []
+        for n in range(n_iterations):
+            self.perform_step()
+            samples.append(self.theta)
+        return samples
+
+    def optimize_without_recording(self, n_iterations) -> None:
+        """
+        Optimizes the objective function without saving the optimization steps.
+        :param n_iterations: number of optimization iterations.
+        """
+        for n in range(n_iterations):
+            self.perform_step()
+        return
 
 
 class AdaGeoAlgorithm(object):

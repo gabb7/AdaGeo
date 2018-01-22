@@ -13,6 +13,128 @@ from adageo.base_classes import AdaGeoAlgorithm, ObservedSpaceOptimizer,\
 import numpy as np
 
 
+class GradientDescent(ObservedSpaceOptimizer):
+
+    def perform_step(self) -> None:
+        """
+        Performs a single optimization step using the vanilla (stochastic)
+        gradient descent.
+        """
+        self.n_it = self.n_it + 1
+        self.update_learning_rate()
+        observed_gradient = self.objective.get_gradient(self.theta)
+        self.theta = self.theta - self.learning_rate * observed_gradient[0, :]
+        return
+
+
+class MomentumDescent(ObservedSpaceOptimizer):
+
+    def __init__(self, objective_function: Optimizable, dim_observed: int,
+                 learning_rate: float = 1e-2, rate_decay: float = 0.0,
+                 momentum_factor: float = .9):
+        """
+        Constructor.
+        :param objective_function: function which we want to optimize;
+        :param dim_observed: size of the sampled parameter vector;
+        :param learning_rate: step size of the optimizer;
+        :param rate_decay: regulates how the step decreases in time. 0.0 if no
+        decrease is needed;
+        :param momentum_factor: factor multiplying the Nesterov momentum.
+        """
+        ObservedSpaceOptimizer.__init__(self, objective_function, dim_observed,
+                                        learning_rate, rate_decay)
+        self.momentum_factor = momentum_factor
+        self.momentum = None
+        return
+
+    def perform_step(self) -> None:
+        """
+        Performs a single optimization step in the latent space.
+        """
+        self.n_it = self.n_it + 1
+        self.update_learning_rate()
+        observed_gradient = self.objective.get_gradient(self.theta)
+        self.momentum = self.momentum_factor * self.momentum + \
+            self.learning_rate * observed_gradient[0, :]
+        self.theta = self.theta - self.momentum
+        return
+
+    def optimize(self, n_iterations) -> np.array:
+        """
+        Optimizes the objective function while recording the optimization steps.
+        :param n_iterations: number of optimization iterations.
+        :return: a numpy array with dimensions [n_iterations, dim_observed] in
+        which every row shows the value of theta for each optimization step.
+        """
+        self.momentum = np.zeros(self.theta.shape)
+        samples = ObservedSpaceOptimizer.optimize(self, n_iterations)
+        return samples
+
+    def optimize_without_recording(self, n_iterations) -> None:
+        """
+        Optimizes the objective function without saving the optimization steps.
+        :param n_iterations: number of optimization iterations.
+        """
+        self.momentum = np.zeros(self.theta.shape)
+        ObservedSpaceOptimizer.optimize_without_recording(self, n_iterations)
+        return
+
+
+class AdaGradDescent(ObservedSpaceOptimizer):
+
+    def __init__(self, objective_function: Optimizable, dim_observed: int,
+                 learning_rate: float = 1e-2, rate_decay: float = 0.0,
+                 smoothing_factor: float = 1e-8,):
+        """
+        Constructor.
+        :param objective_function: function which we want to optimize;
+        :param dim_observed: size of the sampled parameter vector;
+        :param learning_rate: step size of the optimizer;
+        :param rate_decay: regulates how the step decreases in time. 0.0 if no
+        decrease is needed;
+        :param smoothing_factor: smoothing factor in the AdaGrad update rule.
+        """
+        ObservedSpaceOptimizer.__init__(self, objective_function, dim_observed,
+                                        learning_rate, rate_decay)
+        self.smoothing_factor = smoothing_factor
+        self.grad_accumulator = None
+        return
+
+    def perform_step(self) -> None:
+        """
+        Performs a single optimization step in the latent space.
+        """
+        self.n_it = self.n_it + 1
+        self.update_learning_rate()
+        observed_gradient = self.objective.get_gradient(self.theta)
+        self.grad_accumulator = self.grad_accumulator + \
+            observed_gradient[0, :] * observed_gradient[0, :]
+        adagrad_rates = self.learning_rate / np.sqrt(self.grad_accumulator +
+                                                     self.smoothing_factor)
+        self.theta = self.theta - adagrad_rates * observed_gradient[0, :]
+        return
+
+    def optimize(self, n_iterations) -> np.array:
+        """
+        Optimizes the objective function while recording the optimization steps.
+        :param n_iterations: number of optimization iterations.
+        :return: a numpy array with dimensions [n_iterations, dim_observed] in
+        which every row shows the value of theta for each optimization step.
+        """
+        self.grad_accumulator = np.zeros(self.theta.shape)
+        samples = ObservedSpaceOptimizer.optimize(self, n_iterations)
+        return samples
+
+    def optimize_without_recording(self, n_iterations) -> None:
+        """
+        Optimizes the objective function without saving the optimization steps.
+        :param n_iterations: number of optimization iterations.
+        """
+        self.grad_accumulator = np.zeros(self.theta.shape)
+        ObservedSpaceOptimizer.optimize_without_recording(self, n_iterations)
+        return
+
+
 class AdaGeoOptimizer(AdaGeoAlgorithm, ABC):
 
     def __init__(self, objective_function: Optimizable,
