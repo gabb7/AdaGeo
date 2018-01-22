@@ -13,36 +13,44 @@ import GPy
 
 
 class Samplable(ABC):
+    """
+    Abstract base class for a Samplable, an object that can be used as a density
+    to sample from with an AdaGeo sampler.
+    """
 
     @abstractmethod
     def p(self, x: np.array) -> float:
         """
         Returns the value of the probability distribution we want to sample
-        from computed at x (can be unnormalized)
-        :param x: numpy array containing the desired coordinates
-        :return: probability at x
+        from computed at x (can be unnormalized).
+        :param x: numpy array containing the desired coordinates.
+        :return: probability at x.
         """
         pass
 
     def get_gradient(self, x: np.array) -> np.array:
         """
         Returns the gradients of the objective function we want to sample from
-        computed at x (if implementable)
-        :param x: numpy array containing the desired coordinates
-        :return: function gradients at x
+        computed at x (if implementable).
+        :param x: numpy array containing the desired coordinates.
+        :return: function gradients at x.
         """
         pass
 
 
 class Optimizable(ABC):
+    """
+    Abstract base class for an Optimizable, an object representing an objective
+    function that can be optimized using the AdaGeo framework.
+    """
 
     @abstractmethod
     def f(self, x: np.array) -> float:
         """
         Returns the value of the objective function we want to optimize
-        computed at x
-        :param x: numpy array containing the desired coordinates
-        :return: value of the objective function at x
+        computed at x.
+        :param x: numpy array containing the desired coordinates.
+        :return: value of the objective function at x.
         """
         pass
 
@@ -50,14 +58,18 @@ class Optimizable(ABC):
     def get_gradient(self, x: np.array) -> np.array:
         """
         Returns the gradients of the objective function we want to optimize
-        computed at x
-        :param x: numpy array containing the desired coordinates
-        :return: function gradients at x
+        computed at x.
+        :param x: numpy array containing the desired coordinates.
+        :return: function gradients at x.
         """
         pass
 
 
 class ObservedSpaceSampler(ABC):
+    """
+    Abstract base class for a sampler that acts on the observed space (before
+    having applied the AdaGeo scheme).
+    """
 
     def __init__(self, objective_function: Samplable, dim_observed: int):
         """
@@ -72,22 +84,22 @@ class ObservedSpaceSampler(ABC):
         self.n_it = 0
         return
 
-    def initialize_theta(self):
+    def initialize_theta(self) -> None:
         """
-        Initializes the parameter vector from a N(0,1) distribution
+        Initializes the parameter vector from a N(0,1) distribution.
         """
         self.theta = np.random.multivariate_normal(np.zeros(self.dim_observed),
                                                    np.eye(self.dim_observed))
         return
 
     @abstractmethod
-    def perform_step(self):
+    def perform_step(self) -> None:
         """
-        Performs a single update step of the Markov Chain used for sampling
+        Performs a single update step of the Markov Chain used for sampling.
         """
         pass
 
-    def run_burn_in(self, n_burn: int):
+    def run_burn_in(self, n_burn: int) -> None:
         """
         Performs the necessary burn-in iterations, before the actual sampling.
         :param n_burn: number of burn-in iterations.
@@ -115,6 +127,10 @@ class ObservedSpaceSampler(ABC):
 
 
 class ObservedSpaceOptimizer(ABC):
+    """
+    Abstract base class for a optimizer that acts on the observed space (before
+    having applied the AdaGeo scheme).
+    """
 
     def __init__(self, objective_function: Optimizable, dim_observed: int,
                  learning_rate: float = 1e-2, rate_decay: float = 0.0):
@@ -132,7 +148,7 @@ class ObservedSpaceOptimizer(ABC):
         self.n_it = 0
         return
 
-    def initialize_theta(self):
+    def initialize_theta(self) -> None:
         """
         Initializes the parameter vector from a N(0,1) distribution
         """
@@ -150,7 +166,7 @@ class ObservedSpaceOptimizer(ABC):
         return
 
     @abstractmethod
-    def perform_step(self):
+    def perform_step(self) -> None:
         """
         Performs a single update step of the Markov Chain used for sampling
         """
@@ -180,6 +196,10 @@ class ObservedSpaceOptimizer(ABC):
 
 
 class AdaGeoAlgorithm(object):
+    """
+    Base class for any AdaGeo sampler or optimizer. Contains common utilities
+    for both sampling and optimization.
+    """
 
     def __init__(self, objective_function: Optimizable):
         """

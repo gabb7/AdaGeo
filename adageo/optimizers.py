@@ -14,6 +14,9 @@ import numpy as np
 
 
 class GradientDescent(ObservedSpaceOptimizer):
+    """
+    Implementation of the vanilla (stochastic) gradient descent.
+    """
 
     def perform_step(self) -> None:
         """
@@ -28,6 +31,10 @@ class GradientDescent(ObservedSpaceOptimizer):
 
 
 class MomentumDescent(ObservedSpaceOptimizer):
+    """
+    Implementation of the gradient descent optimizer with added Nesterov
+    momentum.
+    """
 
     def __init__(self, objective_function: Optimizable, dim_observed: int,
                  learning_rate: float = 1e-2, rate_decay: float = 0.0,
@@ -81,6 +88,9 @@ class MomentumDescent(ObservedSpaceOptimizer):
 
 
 class AdaGradDescent(ObservedSpaceOptimizer):
+    """
+    Implementation of the AdaGrad optimizer.
+    """
 
     def __init__(self, objective_function: Optimizable, dim_observed: int,
                  learning_rate: float = 1e-2, rate_decay: float = 0.0,
@@ -136,6 +146,9 @@ class AdaGradDescent(ObservedSpaceOptimizer):
 
 
 class AdaGeoOptimizer(AdaGeoAlgorithm, ABC):
+    """
+    Base class for the AdaGeo optimizer.
+    """
 
     def __init__(self, objective_function: Optimizable,
                  obs_optimizer: ObservedSpaceOptimizer,
@@ -199,6 +212,9 @@ class AdaGeoOptimizer(AdaGeoAlgorithm, ABC):
 
 
 class AdaGeoGradientDescent(AdaGeoOptimizer):
+    """
+    AdaGeo - (stochastic) gradient descent.
+    """
 
     def __init__(self, objective_function: Optimizable,
                  obs_optimizer: ObservedSpaceOptimizer,
@@ -234,6 +250,9 @@ class AdaGeoGradientDescent(AdaGeoOptimizer):
 
 
 class AdaGeoMomentumDescent(AdaGeoOptimizer):
+    """
+    AdaGeo - gradient descent with Nesterov momentum.
+    """
 
     def __init__(self, objective_function: Optimizable,
                  obs_optimizer: ObservedSpaceOptimizer,
@@ -296,6 +315,9 @@ class AdaGeoMomentumDescent(AdaGeoOptimizer):
 
 
 class AdaGeoAdaGrad(AdaGeoOptimizer):
+    """
+    AdaGeo - AdaGrad gradient descent.
+    """
 
     def __init__(self, objective_function: Optimizable,
                  obs_optimizer: ObservedSpaceOptimizer,
@@ -358,6 +380,9 @@ class AdaGeoAdaGrad(AdaGeoOptimizer):
 
 
 class AdaGeoNaturalGradient(AdaGeoOptimizer):
+    """
+    AdaGeo - natural gradient descent.
+    """
 
     def __init__(self, objective_function: Optimizable,
                  obs_optimizer: ObservedSpaceOptimizer,

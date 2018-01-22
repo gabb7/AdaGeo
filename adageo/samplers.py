@@ -14,6 +14,9 @@ from adageo.base_classes import AdaGeoAlgorithm, ObservedSpaceSampler, Samplable
 
 
 class MetropolisHastings(ObservedSpaceSampler):
+    """
+    Implementation of the Metropolis - Hasting sampler.
+    """
 
     def __init__(self, objective_function: Samplable, dim_observed: int,
                  radius: float):
@@ -63,6 +66,9 @@ class MetropolisHastings(ObservedSpaceSampler):
 
 
 class SGLD(ObservedSpaceSampler):
+    """
+    Implementation of the Stochastic Gradient Langevin Dynamics.
+    """
 
     def __init__(self, objective_function: Samplable, dim_observed: int,
                  epsilon: float = 1e-2, rate_decay: float = 0.0):
@@ -100,6 +106,9 @@ class SGLD(ObservedSpaceSampler):
 
 
 class AdaGeoSampler(AdaGeoAlgorithm, ABC):
+    """
+    Abstract base class for a AdaGeo sampler.
+    """
 
     def __init__(self, objective_function,
                  obs_sampler: ObservedSpaceSampler,
@@ -197,6 +206,9 @@ class AdaGeoSampler(AdaGeoAlgorithm, ABC):
 
 
 class AdaGeoSGLD(AdaGeoSampler):
+    """
+    Adageo - Stochastic gradient Langevin dynamics
+    """
 
     def perform_step(self) -> None:
         """
@@ -214,6 +226,9 @@ class AdaGeoSGLD(AdaGeoSampler):
 
 
 class AdaGeoSGRLD(AdaGeoSGLD):
+    """
+    Adageo - Stochastic gradient Riemannian Langevin dynamics
+    """
 
     def perform_step(self) -> None:
         """
