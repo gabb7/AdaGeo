@@ -148,11 +148,12 @@ class ObservedSpaceOptimizer(ABC):
         self.n_it = 0
         return
 
-    def initialize_theta(self) -> None:
+    def initialize_theta(self, sigma: float = 1e-2) -> None:
         """
         Initializes the parameter vector from a N(0,1) distribution
         """
         self.theta = np.random.multivariate_normal(np.zeros(self.dim_observed),
+                                                   sigma *
                                                    np.eye(self.dim_observed))
         return
 
@@ -313,6 +314,7 @@ class AdaGeoAlgorithm(object):
         self.compute_jacobian()
         latent_gradient = np.dot(self.jacobian, observed_gradient[0, :])
         return np.reshape(latent_gradient, [1, self.dim_latent])
+
 
     def compute_natural_latent_gradient(
             self, observed_gradient: np.array) -> np.array:
