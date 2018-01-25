@@ -12,6 +12,9 @@ January 2018
 from adageo.base_classes import Optimizable
 import numpy as np
 from random import sample
+import GPy
+from GPy.inference.optimization import Optimizer
+import pandas
 # Dataset
 from keras.datasets import mnist
 # Keras
@@ -218,15 +221,6 @@ class LogRegressionMNIST(Optimizable):
         self.training_history.append(loss)
         return
 
-    # def set_weight_list(self, weights: list) -> None:
-    #     """
-    #     Sets the weights in the network with the ones passed as argument.
-    #     :param weights: list of numpy arrays, one for each layer, containing
-    #     the values of the weights.
-    #     """
-    #     self.model.set_weights(weights)
-    #     return
-
     def get_weight_vector(self) -> np.array:
         """
         Gets the values of the weights of the network, re-formatted as a 1-D
@@ -292,8 +286,64 @@ class LogRegressionMNIST(Optimizable):
         """
         self.set_weight_vector(x.flatten())
         gradient = self.get_gradient_vector()
-        # -----------------------------------------
-        self.compute_training_loss()
-        print(self.training_history[-1])
-        # -----------------------------------------
         return gradient
+
+
+# ---------------------------------- WIP ---------------------------------------
+
+
+class GPOptimizer(Optimizer):
+
+    def __init__(self, AdaGeoOptimizer, *args, **kwargs):
+        super(GPOptimizer, self).__init__(*args, **kwargs)
+        self.opt_name = 'GP Optimizer'
+        self.adageo_optimizer = AdaGeoOptimizer
+        return
+
+    def opt(self, x_init, f_fp=None, f=None, fp=None):
+        # We only need the gradient of the
+        # assert not f is None
+        assert not fp is None
+
+        opt = self.adageo_optimizer
+
+        opt.run(x_init, f, fp)
+
+        self.x_opt = opt.theta
+        self.f_opt = f(self.x_opt)
+        self.status = 'bella'
+        return
+
+
+
+
+class GaussianProcess(Optimizable):
+    """
+    Implementation of a Gaussian Process based on the GPy Library.
+    """
+
+    def __init__(self):
+        self.dim_observed = 9
+        self.kernel = None
+        self.gp_model = None
+        self.build_model()
+        return
+
+    @staticmethod
+    def load_concrete_dataset():
+        filepath = "./Concrete_Data.xls"
+        dataset = np.array(pandas.read_excel(filepath))
+        n_instances = dataset.shape[0]
+        x = np.copy(dataset[:, 0:8])
+        y = np.reshape(np.copy(dataset[:, 8]), [n_instances, 1])
+        return x, y
+
+    def build_model(self):
+        self.kernel = GPy.kern.RBF(input_dim=self.dim_observed) + \
+                      GPy.kern.Matern32(input_dim=self.dim_observed) + \
+                      GPy.kern.Matern52(input_dim=self.dim_observed) + \
+                      GPy.kern.Linear(input_dim=self.dim_observed) + \
+                      GPy.kern.Bias(input_dim=self.dim_observed)
+        x, y = self.load_concrete_dataset()
+        self.gp_model = GPy.models.GPRegression(x, y, self.kernel)
+        return
