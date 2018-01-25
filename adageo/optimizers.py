@@ -26,7 +26,7 @@ class GradientDescent(ObservedSpaceOptimizer):
         self.n_it = self.n_it + 1
         self.update_learning_rate()
         observed_gradient = self.objective.get_gradient(self.theta)
-        self.theta = self.theta - self.learning_rate * observed_gradient[0, :]
+        self.theta = self.theta - self.learning_rate * observed_gradient
         return
 
 
@@ -62,7 +62,7 @@ class MomentumDescent(ObservedSpaceOptimizer):
         self.update_learning_rate()
         observed_gradient = self.objective.get_gradient(self.theta)
         self.momentum = self.momentum_factor * self.momentum + \
-            self.learning_rate * observed_gradient[0, :]
+            self.learning_rate * observed_gradient
         self.theta = self.theta - self.momentum
         return
 
@@ -75,7 +75,7 @@ class MomentumDescent(ObservedSpaceOptimizer):
         """
         self.momentum = np.zeros(self.theta.shape)
         samples = ObservedSpaceOptimizer.optimize(self, n_iterations)
-        return samples
+        return np.array(samples)
 
     def optimize_without_recording(self, n_iterations) -> None:
         """
@@ -118,10 +118,10 @@ class AdaGradDescent(ObservedSpaceOptimizer):
         self.update_learning_rate()
         observed_gradient = self.objective.get_gradient(self.theta)
         self.grad_accumulator = self.grad_accumulator + \
-            observed_gradient[0, :] * observed_gradient[0, :]
+            observed_gradient ** 2
         adagrad_rates = self.learning_rate / np.sqrt(self.grad_accumulator +
                                                      self.smoothing_factor)
-        self.theta = self.theta - adagrad_rates * observed_gradient[0, :]
+        self.theta = self.theta - adagrad_rates * observed_gradient
         return
 
     def optimize(self, n_iterations) -> np.array:
@@ -133,7 +133,7 @@ class AdaGradDescent(ObservedSpaceOptimizer):
         """
         self.grad_accumulator = np.zeros(self.theta.shape)
         samples = ObservedSpaceOptimizer.optimize(self, n_iterations)
-        return samples
+        return np.array(samples)
 
     def optimize_without_recording(self, n_iterations) -> None:
         """
@@ -203,11 +203,12 @@ class AdaGeoOptimizer(AdaGeoAlgorithm, ABC):
         """
         self.dim_latent = dim_latent
         for n in range(n_iterations):
-            self.observed_samples = self.objective.optimize(self.t_observed)
+            self.observed_samples = self.obs_optimizer.optimize(self.t_observed)
             self.build_latent_space(self.dim_latent, ard=ard)
             self.initialize_from_last_theta()
             for t in range(self.t_latent):
                 self.perform_step()
+            self.obs_optimizer.theta = np.copy(self.theta[0, :])
         return
 
 
@@ -244,7 +245,7 @@ class AdaGeoGradientDescent(AdaGeoOptimizer):
         self.update_learning_rate()
         observed_gradient = self.get_observed_gradient(self.theta)
         latent_gradient = self.compute_latent_gradient(observed_gradient)
-        self.omega = self.omega - self.learning_rate * latent_gradient[0, :]
+        self.omega = self.omega - self.learning_rate * latent_gradient
         self.theta = self.gplvm_model.predict(self.omega)[0]
         return
 
@@ -287,7 +288,7 @@ class AdaGeoMomentumDescent(AdaGeoOptimizer):
         observed_gradient = self.get_observed_gradient(self.theta)
         latent_gradient = self.compute_latent_gradient(observed_gradient)
         self.momentum = self.momentum_factor * self.momentum + \
-            self.learning_rate * latent_gradient[0, :]
+            self.learning_rate * latent_gradient
         self.omega = self.omega - self.momentum
         self.theta = self.gplvm_model.predict(self.omega)[0]
         return
@@ -305,12 +306,17 @@ class AdaGeoMomentumDescent(AdaGeoOptimizer):
         """
         self.dim_latent = dim_latent
         for n in range(n_iterations):
-            self.observed_samples = self.objective.optimize(self.t_observed)
+            # self.observed_samples = self.obs_optimizer.optimize(self.t_observed)
+            # np.save("samples.npy",self.observed_samples)
+            self.load_observed_samples("samples.npy")
             self.build_latent_space(self.dim_latent, ard=ard)
             self.initialize_from_last_theta()
+            print(self.gplvm_model)
+            print(self.omega)
             self.momentum = np.zeros(self.omega.shape)
             for t in range(self.t_latent):
                 self.perform_step()
+            self.obs_optimizer.theta = np.copy(self.theta[0, :])
         return
 
 
@@ -353,7 +359,7 @@ class AdaGeoAdaGrad(AdaGeoOptimizer):
             latent_gradient[0, :] * latent_gradient[0, :]
         adagrad_rates = self.learning_rate / np.sqrt(self.grad_accumulator +
                                                      self.smoothing_factor)
-        self.omega = self.omega - adagrad_rates * latent_gradient[0, :]
+        self.omega = self.omega - adagrad_rates * latent_gradient
         self.theta = self.gplvm_model.predict(self.omega)[0]
         return
 
@@ -370,16 +376,17 @@ class AdaGeoAdaGrad(AdaGeoOptimizer):
         """
         self.dim_latent = dim_latent
         for n in range(n_iterations):
-            self.observed_samples = self.objective.optimize(self.t_observed)
+            self.observed_samples = self.obs_optimizer.optimize(self.t_observed)
             self.build_latent_space(self.dim_latent, ard=ard)
             self.initialize_from_last_theta()
             self.grad_accumulator = np.zeros(self.omega.shape)
             for t in range(self.t_latent):
                 self.perform_step()
+            self.obs_optimizer.theta = np.copy(self.theta[0, :])
         return
 
 
-class AdaGeoNaturalGradient(AdaGeoOptimizer):
+class AdaGeoNaturalGradientDescent(AdaGeoOptimizer):
     """
     AdaGeo - natural gradient descent.
     """
@@ -413,6 +420,6 @@ class AdaGeoNaturalGradient(AdaGeoOptimizer):
         observed_gradient = self.get_observed_gradient(self.theta)
         natural_gradient = self.compute_natural_latent_gradient(
             observed_gradient)
-        self.omega = self.omega - self.learning_rate * natural_gradient[0, :]
+        self.omega = self.omega - self.learning_rate * natural_gradient
         self.theta = self.gplvm_model.predict(self.omega)[0]
         return

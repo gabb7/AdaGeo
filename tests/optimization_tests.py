@@ -33,7 +33,7 @@ class LossHistory(Callback):
         Constructor.
         """
         Callback.__init__(self)
-        self.losses = None
+        self.losses = []
         return
 
     def on_train_begin(self, logs=None):
@@ -74,8 +74,9 @@ class LogRegressionMNIST(Optimizable):
         self.gradients = None
         self.get_keras_gradients = None
         self.history = None
-        self.test_history = []
-        self.training_history = []
+        self.test_history = None
+        self.training_history = None
+        self.dim_observed = 0
         self.build_dataset()
         return
 
@@ -121,8 +122,10 @@ class LogRegressionMNIST(Optimizable):
         """
         self.weights = self.model.trainable_weights
         self.weights_shapes = []
+        self.dim_observed = 0
         for w_vec in self.weights:
             self.weights_shapes.append(w_vec.shape)
+            self.dim_observed += int(np.prod(np.array(w_vec.shape)))
         return
 
     def build_gradient_buffers(self) -> None:
@@ -215,14 +218,14 @@ class LogRegressionMNIST(Optimizable):
         self.training_history.append(loss)
         return
 
-    def set_weight_list(self, weights: list) -> None:
-        """
-        Sets the weights in the network with the ones passed as argument.
-        :param weights: list of numpy arrays, one for each layer, containing
-        the values of the weights.
-        """
-        self.model.set_weights(weights)
-        return
+    # def set_weight_list(self, weights: list) -> None:
+    #     """
+    #     Sets the weights in the network with the ones passed as argument.
+    #     :param weights: list of numpy arrays, one for each layer, containing
+    #     the values of the weights.
+    #     """
+    #     self.model.set_weights(weights)
+    #     return
 
     def get_weight_vector(self) -> np.array:
         """
@@ -231,8 +234,8 @@ class LogRegressionMNIST(Optimizable):
         :return: 1-D numpy array containing the value of the weights.
         """
         weights = self.model.get_weights()
-        weights_vector = weights[0].flatten()
         n_layers = len(weights)
+        weights_vector = weights[0].flatten()
         for n in range(1, n_layers):
             weights_vector = np.append(weights_vector, weights[n].flatten())
         return weights_vector
@@ -246,9 +249,9 @@ class LogRegressionMNIST(Optimizable):
         processed_size = 0
         new_weights_list = []
         for tensor_shape in self.weights_shapes:
-            present_size = int(np.prod(tensor_shape))
-            layer_weights = np.copy(weights[processed_size:processed_size +
-                                            present_size])
+            present_size = int(np.prod(np.array(tensor_shape)))
+            vector_end = processed_size + present_size
+            layer_weights = np.copy(weights[processed_size:vector_end])
             new_weights_list.append(np.reshape(layer_weights, tensor_shape))
             processed_size = processed_size + present_size
         self.model.set_weights(new_weights_list)
@@ -263,8 +266,8 @@ class LogRegressionMNIST(Optimizable):
         [x_batch, y_batch] = self.next_train_batch()
         inputs = [x_batch, np.ones(self.n_batch), y_batch, 0]
         grads = self.get_keras_gradients(inputs)
-        grad_vector = grads[0].flatten()
         n_layers = len(grads)
+        grad_vector = grads[0].flatten()
         for n in range(1, n_layers):
             grad_vector = np.append(grad_vector, grads[n].flatten())
         return grad_vector
@@ -276,7 +279,7 @@ class LogRegressionMNIST(Optimizable):
         :param x: numpy array containing the weights of the network.
         :return: value of the objective function at x.
         """
-        self.set_weight_vector(x)
+        self.set_weight_vector(x.flatten())
         self.compute_training_loss()
         return self.training_history[-1]
 
@@ -287,6 +290,10 @@ class LogRegressionMNIST(Optimizable):
         :param x: numpy array containing the desired coordinates.
         :return: function gradients at x.
         """
-        self.set_weight_vector(x)
+        self.set_weight_vector(x.flatten())
         gradient = self.get_gradient_vector()
+        # -----------------------------------------
+        self.compute_training_loss()
+        print(self.training_history[-1])
+        # -----------------------------------------
         return gradient

@@ -84,12 +84,12 @@ class ObservedSpaceSampler(ABC):
         self.n_it = 0
         return
 
-    def initialize_theta(self) -> None:
+    def initialize_theta(self, sigma: float = 1e-2) -> None:
         """
-        Initializes the parameter vector from a N(0,1) distribution.
+        Initializes the parameter vector from a N(0,1) distribution
         """
-        self.theta = np.random.multivariate_normal(np.zeros(self.dim_observed),
-                                                   np.eye(self.dim_observed))
+        self.theta = np.random.normal(np.zeros(self.dim_observed),
+                                      sigma * np.ones(self.dim_observed))
         return
 
     @abstractmethod
@@ -152,9 +152,8 @@ class ObservedSpaceOptimizer(ABC):
         """
         Initializes the parameter vector from a N(0,1) distribution
         """
-        self.theta = np.random.multivariate_normal(np.zeros(self.dim_observed),
-                                                   sigma *
-                                                   np.eye(self.dim_observed))
+        self.theta = np.random.normal(np.zeros(self.dim_observed),
+                                      sigma * np.ones(self.dim_observed))
         return
 
     def update_learning_rate(self) -> None:
@@ -184,6 +183,7 @@ class ObservedSpaceOptimizer(ABC):
         for n in range(n_iterations):
             self.perform_step()
             samples.append(self.theta)
+        samples = np.array(samples)
         return samples
 
     def optimize_without_recording(self, n_iterations) -> None:
@@ -227,11 +227,12 @@ class AdaGeoAlgorithm(object):
         """
         self.observed_samples = np.load(filename)
         self.dim_observed = self.observed_samples.shape[1]
-        self.theta = np.copy(self.observed_samples[-1, :])
+        self.theta = np.copy(self.observed_samples[-1, :]).\
+            reshape([1, self.dim_observed])
         return
 
     def build_latent_space(self, dim_latent: int, ard: bool = False,
-                           likelihood_variance: float = 0.1) -> None:
+                           likelihood_variance: float = 0.01) -> None:
         """
         Builds the latent representation for the parameters theta acquired so
         far, saved in self.observed_samples.
@@ -241,13 +242,14 @@ class AdaGeoAlgorithm(object):
         the GP model.
         """
         self.dim_latent = dim_latent
-        kernel = GPy.kern.RBF(input_dim=self.dim_latent, ARD=ard) + GPy.kern.\
-            Bias(input_dim=self.dim_latent)
+        self.dim_observed = self.observed_samples.shape[1]
+        print (self.observed_samples.shape)
+        kernel = GPy.kern.RBF(input_dim=self.dim_latent, ARD=ard)
         self.gplvm_model = GPy.models.GPLVM(Y=self.observed_samples,
                                             input_dim=self.dim_latent,
                                             kernel=kernel)
         self.gplvm_model.likelihood.variance = likelihood_variance
-        self.gplvm_model.optimize()
+        self.gplvm_model.optimize_restarts(4)
         return
 
     def draw_latent_omega_prior(self) -> None:
@@ -255,11 +257,10 @@ class AdaGeoAlgorithm(object):
         Draw omega from a Gaussian N(0,1) prior on the latent space, as a
         way to set the starting point for the sampling / optimization.
         """
-        self.omega = np.reshape(np.random.multivariate_normal(
-                     np.zeros(self.dim_latent), np.eye(self.dim_latent)),
+        self.omega = np.reshape(np.random.normal(
+                     np.zeros(self.dim_latent), np.ones(self.dim_latent)),
                      [1, self.dim_latent])
         self.theta = self.gplvm_model.predict(self.omega)[0]
-        self.dim_observed = self.theta.shape[1]
         return
 
     def initialize_from_last_theta(self) -> None:
@@ -268,7 +269,8 @@ class AdaGeoAlgorithm(object):
         the last observed sample.
         """
         xx = GPy.plotting.gpy_plot.plot_util.get_x_y_var(self.gplvm_model)[0]
-        self.omega = np.reshape(xx[-1, :], [1, self.dim_latent])
+        print("LATENT SPACE", xx)
+        self.omega = xx[-1, :].reshape([1, self.dim_latent])
         self.theta = self.gplvm_model.predict(self.omega)[0]
         return
 
@@ -279,7 +281,7 @@ class AdaGeoAlgorithm(object):
         :param theta: coordinates at which the gradient is computed;
         :return: numpy array containing the gradients at theta.
         """
-        return self.objective.get_gradient(theta)
+        return self.objective.get_gradient(theta).reshape([1, self.dim_observed])
 
     def compute_jacobian(self) -> None:
         """
@@ -312,9 +314,8 @@ class AdaGeoAlgorithm(object):
         :return: the corresponding gradient in the latent space.
         """
         self.compute_jacobian()
-        latent_gradient = np.dot(self.jacobian, observed_gradient[0, :])
-        return np.reshape(latent_gradient, [1, self.dim_latent])
-
+        latent_gradient = np.dot(self.jacobian, observed_gradient[0,:])
+        return latent_gradient.reshape([1, self.dim_latent])
 
     def compute_natural_latent_gradient(
             self, observed_gradient: np.array) -> np.array:
@@ -328,5 +329,5 @@ class AdaGeoAlgorithm(object):
         self.compute_metric_tensor()
         latent_gradient = self.compute_latent_gradient(observed_gradient)
         natural_gradient = np.dot(np.linalg.inv(self.metric_tensor),
-                                  latent_gradient)
-        return natural_gradient
+                                  latent_gradient[0, :])
+        return natural_gradient.reshape([1, self.dim_latent])
