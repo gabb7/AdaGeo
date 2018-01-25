@@ -148,7 +148,7 @@ class ObservedSpaceOptimizer(ABC):
         self.n_it = 0
         return
 
-    def initialize_theta(self, sigma: float = 1e-2) -> None:
+    def initialize_theta(self, sigma: float = 1e-1) -> None:
         """
         Initializes the parameter vector from a N(0,1) distribution
         """
@@ -243,13 +243,12 @@ class AdaGeoAlgorithm(object):
         """
         self.dim_latent = dim_latent
         self.dim_observed = self.observed_samples.shape[1]
-        print (self.observed_samples.shape)
         kernel = GPy.kern.RBF(input_dim=self.dim_latent, ARD=ard)
         self.gplvm_model = GPy.models.GPLVM(Y=self.observed_samples,
                                             input_dim=self.dim_latent,
                                             kernel=kernel)
         self.gplvm_model.likelihood.variance = likelihood_variance
-        self.gplvm_model.optimize_restarts(4)
+        self.gplvm_model.optimize()
         return
 
     def draw_latent_omega_prior(self) -> None:
@@ -269,7 +268,6 @@ class AdaGeoAlgorithm(object):
         the last observed sample.
         """
         xx = GPy.plotting.gpy_plot.plot_util.get_x_y_var(self.gplvm_model)[0]
-        print("LATENT SPACE", xx)
         self.omega = xx[-1, :].reshape([1, self.dim_latent])
         self.theta = self.gplvm_model.predict(self.omega)[0]
         return
@@ -281,7 +279,8 @@ class AdaGeoAlgorithm(object):
         :param theta: coordinates at which the gradient is computed;
         :return: numpy array containing the gradients at theta.
         """
-        return self.objective.get_gradient(theta).reshape([1, self.dim_observed])
+        return self.objective.get_gradient(theta).reshape([1,
+                                                           self.dim_observed])
 
     def compute_jacobian(self) -> None:
         """
@@ -314,7 +313,7 @@ class AdaGeoAlgorithm(object):
         :return: the corresponding gradient in the latent space.
         """
         self.compute_jacobian()
-        latent_gradient = np.dot(self.jacobian, observed_gradient[0,:])
+        latent_gradient = np.dot(self.jacobian, observed_gradient[0, :])
         return latent_gradient.reshape([1, self.dim_latent])
 
     def compute_natural_latent_gradient(

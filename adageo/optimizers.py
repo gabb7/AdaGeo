@@ -66,7 +66,7 @@ class MomentumDescent(ObservedSpaceOptimizer):
         self.theta = self.theta - self.momentum
         return
 
-    def optimize(self, n_iterations) -> np.array:
+    def optimize(self, n_iterations: int) -> np.array:
         """
         Optimizes the objective function while recording the optimization steps.
         :param n_iterations: number of optimization iterations.
@@ -77,7 +77,7 @@ class MomentumDescent(ObservedSpaceOptimizer):
         samples = ObservedSpaceOptimizer.optimize(self, n_iterations)
         return np.array(samples)
 
-    def optimize_without_recording(self, n_iterations) -> None:
+    def optimize_without_recording(self, n_iterations: int) -> None:
         """
         Optimizes the objective function without saving the optimization steps.
         :param n_iterations: number of optimization iterations.
@@ -124,7 +124,7 @@ class AdaGradDescent(ObservedSpaceOptimizer):
         self.theta = self.theta - adagrad_rates * observed_gradient
         return
 
-    def optimize(self, n_iterations) -> np.array:
+    def optimize(self, n_iterations: int) -> np.array:
         """
         Optimizes the objective function while recording the optimization steps.
         :param n_iterations: number of optimization iterations.
@@ -135,7 +135,7 @@ class AdaGradDescent(ObservedSpaceOptimizer):
         samples = ObservedSpaceOptimizer.optimize(self, n_iterations)
         return np.array(samples)
 
-    def optimize_without_recording(self, n_iterations) -> None:
+    def optimize_without_recording(self, n_iterations: int) -> None:
         """
         Optimizes the objective function without saving the optimization steps.
         :param n_iterations: number of optimization iterations.
@@ -306,13 +306,9 @@ class AdaGeoMomentumDescent(AdaGeoOptimizer):
         """
         self.dim_latent = dim_latent
         for n in range(n_iterations):
-            # self.observed_samples = self.obs_optimizer.optimize(self.t_observed)
-            # np.save("samples.npy",self.observed_samples)
-            self.load_observed_samples("samples.npy")
+            self.observed_samples = self.obs_optimizer.optimize(self.t_observed)
             self.build_latent_space(self.dim_latent, ard=ard)
             self.initialize_from_last_theta()
-            print(self.gplvm_model)
-            print(self.omega)
             self.momentum = np.zeros(self.omega.shape)
             for t in range(self.t_latent):
                 self.perform_step()
