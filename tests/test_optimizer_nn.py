@@ -1,16 +1,16 @@
 """
-Python script that test the AdaGeo optimizer while training a neural network
+Python script that tests the AdaGeo optimizer while training a neural network
 with one layer implementing logistic regression on the MNIST dataset.
 
 Gabriele Abbati, Machine Learning Research Group, University of Oxford
 January 2018
 """
 
+
 # Libraries
 from tests.optimization_tests import LogRegressionMNIST
-from adageo.optimizers import AdaGeoGradientDescent, AdaGeoMomentumDescent,\
-    AdaGeoAdaGrad, AdaGeoNaturalGradientDescent
-from adageo.optimizers import GradientDescent, MomentumDescent, AdaGradDescent
+from adageo.optimizers import AdaGeoMomentumDescent
+from adageo.optimizers import GradientDescent
 
 
 test_network = LogRegressionMNIST(n_batch=750)
