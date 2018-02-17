@@ -105,6 +105,7 @@ class ObservedSpaceSampler(ABC):
         :param n_burn: number of burn-in iterations.
         """
         for n in range(n_burn):
+            self.n_it = self.n_it + 1
             self.perform_step()
         return
 
@@ -120,7 +121,6 @@ class ObservedSpaceSampler(ABC):
         self.run_burn_in(n_burn)
         samples = []
         for n in range(n_samples):
-            self.n_it = self.n_it + 1
             self.run_burn_in(thin_factor)
             samples.append(self.theta)
         return np.asarray(samples)
