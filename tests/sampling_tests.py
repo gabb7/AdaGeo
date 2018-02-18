@@ -38,9 +38,9 @@ class BananaDensity(Samplable):
         :param x: numpy array containing the desired coordinates.
         :return: probability at x.
         """
-        p = - x[0, 0]**2 / 200.0 - 0.5 * (x[0, 1] - self.b * x[0, 0]**2 +
-                                          100.0 * self.b)**2
-        p_sum = - 0.5 * np.sum(x[0, 2:-1]**2)
+        p = - x[0]**2 / 200.0 - 0.5 * (x[1] - self.b * x[0]**2 +
+                                       100.0 * self.b)**2
+        p_sum = - 0.5 * np.sum(x[2:-1]**2)
         p = p + p_sum
         return np.exp(p)
 
@@ -70,8 +70,8 @@ class LogBananaDensity(BananaDensity):
         :param x: numpy array containing the desired coordinates.
         :return: log-probability at x.
         """
-        p = - x[0, 0]**2 / 200.0 - 0.5 * (x[0, 1] - self.b * x[0, 0]**2 +
-                                          100.0 * self.b)**2
-        p_sum = - 0.5 * np.sum(x[0, 2:-1]**2)
+        p = - x[0]**2 / 200.0 - 0.5 * (x[1] - self.b * x[0]**2 +
+                                       100.0 * self.b)**2
+        p_sum = - 0.5 * np.sum(x[2:-1]**2)
         p = p + p_sum
         return p

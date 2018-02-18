@@ -60,9 +60,26 @@ class MetropolisHastings(ObservedSpaceSampler):
         Performs a single update step of the Markov Chain used for sampling
         """
         proposal = self.propose_sample()
+        n = 1.0
         while not self.accept_sample(proposal):
             proposal = self.propose_sample()
-        return
+            n += 1.0
+        self.theta = np.copy(proposal)
+        return n
+
+    def sample(self, n_samples: int = 100, n_burn: int = 10000,
+               thin_factor: int = 100) -> np.array:
+        """
+        Sample from the objective function.
+        :param n_samples: number of needed observed samples;
+        :param n_burn: number of burn-in iterations;
+        :param thin_factor: sampling thinning factor.
+        """
+        self.n_it = 0
+        self.run_burn_in(n_burn)
+        samples = ObservedSpaceSampler.sample(self, n_samples=n_samples,
+                                              n_burn=0, thin_factor=thin_factor)
+        return samples
 
 
 class SGLD(ObservedSpaceSampler):
